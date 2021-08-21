@@ -24,12 +24,12 @@ deploy-conf:
 
 deploy: deploy-app deploy-conf stop-mock
 
-stop-mock
-	ssh isucon@isucondition-1.t.isucon.dev 'sudo systemctl stop jiaapi-mock.service'
-	ssh isucon@isucondition-2.t.isucon.dev 'sudo systemctl stop jiaapi-mock.service'
-	ssh isucon@isucondition-3.t.isucon.dev 'sudo systemctl stop jiaapi-mock.service'
+stop-mock:
+	ssh isucon@isucondition-1.t.isucon.dev 'sudo systemctl disable --now jiaapi-mock.service'
+	ssh isucon@isucondition-2.t.isucon.dev 'sudo systemctl disable --now jiaapi-mock.service'
+	ssh isucon@isucondition-3.t.isucon.dev 'sudo systemctl disable --now jiaapi-mock.service'
 
-restart-mock
+restart-mock:
 	ssh isucon@isucondition-1.t.isucon.dev 'sudo systemctl restart jiaapi-mock.service'
 	ssh isucon@isucondition-2.t.isucon.dev 'sudo systemctl restart jiaapi-mock.service'
 	ssh isucon@isucondition-3.t.isucon.dev 'sudo systemctl restart jiaapi-mock.service'
