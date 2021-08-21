@@ -1,7 +1,10 @@
 #!/bin/bash
 set -xu -o pipefail
 
+# 3 で grant all privileges on isucondition.* to isucon@"%" identified by "isucon"  with grant option; 手でした。
+
 CURRENT_DIR=$(cd $(dirname $0);pwd)
+export MYSQL_HOST=192.168.0.13
 export MYSQL_HOST=${MYSQL_HOST:-127.0.0.1}
 export MYSQL_PORT=${MYSQL_PORT:-3306}
 export MYSQL_USER=${MYSQL_USER:-isucon}
