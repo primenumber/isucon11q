@@ -311,7 +311,12 @@ func getUserIDFromSession(c echo.Context) (string, int, error) {
 	return jiaUserID, 0, nil
 }
 
+var jiaCache = ""
+
 func getJIAServiceURL(tx *sqlx.Tx) string {
+	if jiaCache != "" {
+		return jiaCache
+	}
 	var config Config
 	err := tx.Get(&config, "SELECT * FROM `isu_association_config` WHERE `name` = ?", "jia_service_url")
 	if err != nil {
@@ -320,6 +325,7 @@ func getJIAServiceURL(tx *sqlx.Tx) string {
 		}
 		return defaultJIAServiceURL
 	}
+	jiaCache = config.URL
 	return config.URL
 }
 
@@ -472,15 +478,8 @@ func getIsuList(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	tx, err := db.Beginx()
-	if err != nil {
-		c.Logger().Errorf("db error: %v", err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
-	defer tx.Rollback()
-
 	isuList := []Isu{}
-	err = tx.Select(
+	err = db.Select(
 		&isuList,
 		"SELECT * FROM `isu` WHERE `jia_user_id` = ? ORDER BY `id` DESC",
 		jiaUserID)
@@ -491,41 +490,43 @@ func getIsuList(c echo.Context) error {
 
 	responseList := []GetIsuListResponse{}
 	var lastConditions []IsuConditionJoinned
-	err = tx.Select(&lastConditions, "select isu.id, isu.jia_isu_uuid, `timestamp`, `is_sitting`, `condition`, `message`, isc.`created_at`, name, `character` from (select isc.id, isc.jia_isu_uuid, isc.`timestamp`, `is_sitting`, `condition`, message, `created_at` from isu_condition as isc inner join (select jia_isu_uuid, max(`timestamp`) as timestamp from isu_condition group by jia_isu_uuid) as tmp1 on isc.jia_isu_uuid = tmp1.jia_isu_uuid and isc.`timestamp` = tmp1.`timestamp`) as isc inner join (select id, jia_isu_uuid, name, `character` from isu where  jia_user_id = ?) as isu on isc.jia_isu_uuid = isu.jia_isu_uuid order by id desc;", jiaUserID)
+	err = db.Select(&lastConditions, "select isu.id, isu.jia_isu_uuid, `timestamp`, `is_sitting`, `condition`, `message`, isc.`created_at`, name, `character` from (select isc.id, isc.jia_isu_uuid, isc.`timestamp`, `is_sitting`, `condition`, message, `created_at` from isu_condition as isc inner join (select jia_isu_uuid, max(`timestamp`) as timestamp from isu_condition group by jia_isu_uuid) as tmp1 on isc.jia_isu_uuid = tmp1.jia_isu_uuid and isc.`timestamp` = tmp1.`timestamp`) as isc inner join (select id, jia_isu_uuid, name, `character` from isu where  jia_user_id = ?) as isu on isc.jia_isu_uuid = isu.jia_isu_uuid order by id desc;", jiaUserID)
 	if err != nil {
 		c.Logger().Errorf("??????: %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
-	for _, cond := range lastConditions {
-		conditionLevel, err := calculateConditionLevel(cond.Condition)
-		if err != nil {
-			c.Logger().Error(err)
-			return c.NoContent(http.StatusInternalServerError)
-		}
 
-		formattedCondition := &GetIsuConditionResponse{
-			JIAIsuUUID:     cond.JIAIsuUUID,
-			IsuName:        cond.Name,
-			Timestamp:      cond.Timestamp.Unix(),
-			IsSitting:      cond.IsSitting,
-			Condition:      cond.Condition,
-			ConditionLevel: conditionLevel,
-			Message:        cond.Message,
+	lastCondMap := map[string]IsuConditionJoinned{}
+	for _, cond := range lastConditions {
+		lastCondMap[cond.JIAIsuUUID] = cond
+	}
+	for _, isu := range isuList {
+		var formattedCondition *GetIsuConditionResponse
+		if cond, ok := lastCondMap[isu.JIAIsuUUID]; ok {
+			conditionLevel, err := calculateConditionLevel(cond.Condition)
+			if err != nil {
+				c.Logger().Error(err)
+				return c.NoContent(http.StatusInternalServerError)
+			}
+
+			formattedCondition = &GetIsuConditionResponse{
+				JIAIsuUUID:     cond.JIAIsuUUID,
+				IsuName:        cond.Name,
+				Timestamp:      cond.Timestamp.Unix(),
+				IsSitting:      cond.IsSitting,
+				Condition:      cond.Condition,
+				ConditionLevel: conditionLevel,
+				Message:        cond.Message,
+			}
 		}
 
 		res := GetIsuListResponse{
-			ID:                 cond.ID,
-			JIAIsuUUID:         cond.JIAIsuUUID,
-			Name:               cond.Name,
-			Character:          cond.Character,
+			ID:                 isu.ID,
+			JIAIsuUUID:         isu.JIAIsuUUID,
+			Name:               isu.Name,
+			Character:          isu.Character,
 			LatestIsuCondition: formattedCondition}
 		responseList = append(responseList, res)
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		c.Logger().Errorf("db error: %v", err)
-		return c.NoContent(http.StatusInternalServerError)
 	}
 
 	return c.JSON(http.StatusOK, responseList)
@@ -973,9 +974,9 @@ func getIsuConditions(c echo.Context) error {
 	if conditionLevelCSV == "" {
 		return c.String(http.StatusBadRequest, "missing: condition_level")
 	}
-	conditionLevel := map[string]interface{}{}
+	conditionLevel := map[string]bool{}
 	for _, level := range strings.Split(conditionLevelCSV, ",") {
-		conditionLevel[level] = struct{}{}
+		conditionLevel[level] = true
 	}
 
 	startTimeStr := c.QueryParam("start_time")
@@ -1011,21 +1012,22 @@ func getIsuConditions(c echo.Context) error {
 }
 
 // ISUのコンディションをDBから取得
-func getIsuConditionsFromDB(db *sqlx.DB, jiaIsuUUID string, endTime time.Time, conditionLevel map[string]interface{}, startTime time.Time,
+func getIsuConditionsFromDB(db *sqlx.DB, jiaIsuUUID string, endTime time.Time, conditionLevel map[string]bool, startTime time.Time,
 	limit int, isuName string) ([]*GetIsuConditionResponse, error) {
 
-	conditions := []IsuCondition{}
+	var c IsuCondition
 	var err error
+	var rows *sqlx.Rows
 
 	if startTime.IsZero() {
-		err = db.Select(&conditions,
+		rows, err = db.Queryx(
 			"SELECT * FROM `isu_condition` WHERE `jia_isu_uuid` = ?"+
 				"	AND `timestamp` < ?"+
 				"	ORDER BY `timestamp` DESC",
 			jiaIsuUUID, endTime,
 		)
 	} else {
-		err = db.Select(&conditions,
+		rows, err = db.Queryx(
 			"SELECT * FROM `isu_condition` WHERE `jia_isu_uuid` = ?"+
 				"	AND `timestamp` < ?"+
 				"	AND ? <= `timestamp`"+
@@ -1038,7 +1040,12 @@ func getIsuConditionsFromDB(db *sqlx.DB, jiaIsuUUID string, endTime time.Time, c
 	}
 
 	conditionsResponse := []*GetIsuConditionResponse{}
-	for _, c := range conditions {
+	for rows.Next() {
+		err = rows.StructScan(&c)
+		if err != nil {
+			return nil, err
+		}
+
 		cLevel, err := calculateConditionLevel(c.Condition)
 		if err != nil {
 			continue
@@ -1056,10 +1063,11 @@ func getIsuConditionsFromDB(db *sqlx.DB, jiaIsuUUID string, endTime time.Time, c
 			}
 			conditionsResponse = append(conditionsResponse, &data)
 		}
-	}
 
-	if len(conditionsResponse) > limit {
-		conditionsResponse = conditionsResponse[:limit]
+		if len(conditionsResponse) >= limit {
+			rows.Close()
+			break
+		}
 	}
 
 	return conditionsResponse, nil
