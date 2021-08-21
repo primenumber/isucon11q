@@ -1202,7 +1202,7 @@ func postIsuCondition(c echo.Context) error {
 	for _, cond := range req {
 		timestamp := time.Unix(cond.Timestamp, 0)
 
-		if !isValidConditionFormat(cond.Condition) {
+		if !isValidConditionFormat2(cond.Condition) {
 			return c.String(http.StatusBadRequest, "bad request body")
 		}
 
@@ -1228,9 +1228,22 @@ func postIsuCondition(c echo.Context) error {
 	return c.NoContent(http.StatusAccepted)
 }
 
+func isValidConditionFormat2(conditionStr string) bool {
+	keys := []string{"is_dirty=", "is_overweight=", "is_broken="}
+	vs := strings.Split(conditionStr, ",")
+	if len(vs) != 3 {
+		return false
+	}
+	for i, v := range vs {
+		if !(v == keys[i]+"true" || v == keys[i]+"false") {
+			return false
+		}
+	}
+	return true
+}
+
 // ISUのコンディションの文字列がcsv形式になっているか検証
 func isValidConditionFormat(conditionStr string) bool {
-
 	keys := []string{"is_dirty=", "is_overweight=", "is_broken="}
 	const valueTrue = "true"
 	const valueFalse = "false"
