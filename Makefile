@@ -14,7 +14,7 @@ deploy-conf:
 	scp env.sh isucon@isucondition-1.t.isucon.dev:/home/isucon/env.sh
 	scp webapp/sql/0_Schema.sql isucon@isucondition-1.t.isucon.dev:/home/isucon/webapp/sql/
 	scp webapp/sql/init.sh isucon@isucondition-1.t.isucon.dev:/home/isucon/webapp/sql/
-	scp etc/1-isucondition.conf isucon@isucondition-1.t.isucon.devgi:/tmp
+	scp etc/1-isucondition.conf isucon@isucondition-1.t.isucon.dev:/tmp
 	ssh isucon@isucondition-1.t.isucon.dev 'sudo cp /tmp/isucondition.go.service /etc/systemd/system/isucondition.go.service; sudo systemctl daemon-reload; sudo systemctl restart isucondition.go.service; sudo cp /tmp/1-isucondition.conf /etc/nginx/sites-available/isucondition.conf; sudo systemctl restart nginx'
 	curl https://isucondition-1.t.isucon.dev/
 	scp etc/isucondition.go.service isucon@isucondition-2.t.isucon.dev:/tmp/isucondition.go.service
