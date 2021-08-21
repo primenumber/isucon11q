@@ -77,6 +77,9 @@ expire_logs_days        = 10
 #binlog_do_db           = include_database_name
 #binlog_ignore_db       = exclude_database_name
 
+innodb_buffer_pool_size = 3G
+innodb_log_file_size = 512M
+
 #
 # * Security Features
 #
