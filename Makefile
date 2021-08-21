@@ -4,7 +4,7 @@ app:
 	cd webapp/go; GOOS=linux GOARCH=amd64 go build
 
 deploy:
-	ssh isucon@isucondition-1.t.isucon.dev rm /home/isucon/webapp/go/isucondition
+	ssh isucon@isucondition-1.t.isucon.dev rm -f /home/isucon/webapp/go/isucondition
 	scp webapp/go/isucondition isucon@isucondition-1.t.isucon.dev:/home/isucon/webapp/go/
 	scp etc/isucondition.go.service isucon@isucondition-1.t.isucon.dev:/tmp/isucondition.go.service
 	scp env.sh isucon@isucondition-1.t.isucon.dev:/home/isucon/env.sh
