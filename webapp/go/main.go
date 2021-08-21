@@ -299,7 +299,12 @@ func getUserIDFromSession(c echo.Context) (string, int, error) {
 	return jiaUserID, 0, nil
 }
 
+var jiaCache = ""
+
 func getJIAServiceURL(tx *sqlx.Tx) string {
+	if jiaCache != "" {
+		return jiaCache
+	}
 	var config Config
 	err := tx.Get(&config, "SELECT * FROM `isu_association_config` WHERE `name` = ?", "jia_service_url")
 	if err != nil {
@@ -308,6 +313,7 @@ func getJIAServiceURL(tx *sqlx.Tx) string {
 		}
 		return defaultJIAServiceURL
 	}
+	jiaCache = config.URL
 	return config.URL
 }
 
