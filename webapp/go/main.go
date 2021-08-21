@@ -91,9 +91,15 @@ type IsuCondition struct {
 }
 
 type IsuConditionJoinned struct {
-	IsuCondition
-	Name      string `db:"name"`
-	Character string `db:"character"`
+	ID         int       `db:"id"`
+	JIAIsuUUID string    `db:"jia_isu_uuid"`
+	Timestamp  time.Time `db:"timestamp"`
+	IsSitting  bool      `db:"is_sitting"`
+	Condition  string    `db:"condition"`
+	Message    string    `db:"message"`
+	CreatedAt  time.Time `db:"created_at"`
+	Name       string    `db:"name"`
+	Character  string    `db:"character"`
 }
 
 type MySQLConnectionEnv struct {
@@ -222,7 +228,7 @@ func init() {
 
 func main() {
 	e := echo.New()
-	e.Debug = false
+	e.Debug = true
 	e.Logger.SetLevel(log.DEBUG)
 
 	e.Use(middleware.Logger())
@@ -485,7 +491,7 @@ func getIsuList(c echo.Context) error {
 
 	responseList := []GetIsuListResponse{}
 	var lastConditions []IsuConditionJoinned
-	err = tx.Select(&lastConditions, "SELECT isu_condition.id, isu.jia_isu_uuid, `timestamp`, `is_sitting`, `condition`, `message`, isu_condition.`created_at`, name, `character` FROM `isu_condition` inner join isu on isu_condition.jia_isu_uuid = isu.jia_isu_uuid Where timestamp in (SELECT max(`timestamp`)  FROM `isu_condition` inner join isu on isu_condition.jia_isu_uuid = isu.jia_isu_uuid where jia_user_id = ? group by isu.jia_isu_uuid);", jiaUserID)
+	err = tx.Select(&lastConditions, "select isc.id, isu.jia_isu_uuid, `timestamp`, `is_sitting`, `condition`, `message`, isc.`created_at`, name, `character` from (select id, `is_sitting`, `condition`, `message`, jia_isu_uuid, max(`timestamp`) as timestamp,`created_at` from isu_condition group by jia_isu_uuid) as isc inner join (select id, jia_isu_uuid, name, `character` from isu where  jia_user_id = ?) as isu on isc.jia_isu_uuid = isu.jia_isu_uuid order by jia_isu_uuid asc;", jiaUserID)
 	if err != nil {
 		c.Logger().Errorf("??????: %v", err)
 		return c.NoContent(http.StatusInternalServerError)
