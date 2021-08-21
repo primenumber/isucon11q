@@ -496,7 +496,13 @@ func getIsuList(c echo.Context) error {
 		c.Logger().Errorf("??????: %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
+
+	lastCondMap := map[string]IsuConditionJoinned{}
 	for _, cond := range lastConditions {
+		lastCondMap[cond.JIAIsuUUID] = cond
+	}
+	for _, isu := range isuList {
+		cond := lastCondMap[isu.JIAIsuUUID]
 		conditionLevel, err := calculateConditionLevel(cond.Condition)
 		if err != nil {
 			c.Logger().Error(err)
