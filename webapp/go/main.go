@@ -502,28 +502,30 @@ func getIsuList(c echo.Context) error {
 		lastCondMap[cond.JIAIsuUUID] = cond
 	}
 	for _, isu := range isuList {
-		cond := lastCondMap[isu.JIAIsuUUID]
-		conditionLevel, err := calculateConditionLevel(cond.Condition)
-		if err != nil {
-			c.Logger().Error(err)
-			return c.NoContent(http.StatusInternalServerError)
-		}
+		var formattedCondition *GetIsuConditionResponse
+		if cond, ok := lastCondMap[isu.JIAIsuUUID]; ok {
+			conditionLevel, err := calculateConditionLevel(cond.Condition)
+			if err != nil {
+				c.Logger().Error(err)
+				return c.NoContent(http.StatusInternalServerError)
+			}
 
-		formattedCondition := &GetIsuConditionResponse{
-			JIAIsuUUID:     cond.JIAIsuUUID,
-			IsuName:        cond.Name,
-			Timestamp:      cond.Timestamp.Unix(),
-			IsSitting:      cond.IsSitting,
-			Condition:      cond.Condition,
-			ConditionLevel: conditionLevel,
-			Message:        cond.Message,
+			formattedCondition = &GetIsuConditionResponse{
+				JIAIsuUUID:     cond.JIAIsuUUID,
+				IsuName:        cond.Name,
+				Timestamp:      cond.Timestamp.Unix(),
+				IsSitting:      cond.IsSitting,
+				Condition:      cond.Condition,
+				ConditionLevel: conditionLevel,
+				Message:        cond.Message,
+			}
 		}
 
 		res := GetIsuListResponse{
-			ID:                 cond.ID,
-			JIAIsuUUID:         cond.JIAIsuUUID,
-			Name:               cond.Name,
-			Character:          cond.Character,
+			ID:                 isu.ID,
+			JIAIsuUUID:         isu.JIAIsuUUID,
+			Name:               isu.Name,
+			Character:          isu.Character,
 			LatestIsuCondition: formattedCondition}
 		responseList = append(responseList, res)
 	}
