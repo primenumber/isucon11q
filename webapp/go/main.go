@@ -491,7 +491,7 @@ func getIsuList(c echo.Context) error {
 
 	responseList := []GetIsuListResponse{}
 	var lastConditions []IsuConditionJoinned
-	err = tx.Select(&lastConditions, "select isc.id, isu.jia_isu_uuid, `timestamp`, `is_sitting`, `condition`, `message`, isc.`created_at`, name, `character` from (select id, `is_sitting`, `condition`, `message`, jia_isu_uuid, max(`timestamp`) as timestamp,`created_at` from isu_condition group by jia_isu_uuid) as isc inner join (select id, jia_isu_uuid, name, `character` from isu where  jia_user_id = ?) as isu on isc.jia_isu_uuid = isu.jia_isu_uuid order by jia_isu_uuid asc;", jiaUserID)
+	err = tx.Select(&lastConditions, "select isu.id, isu.jia_isu_uuid, `timestamp`, `is_sitting`, `condition`, `message`, isc.`created_at`, name, `character` from (select isc.id, isc.jia_isu_uuid, isc.`timestamp`, `is_sitting`, `condition`, message, `created_at` from isu_condition as isc inner join (select jia_isu_uuid, max(`timestamp`) as timestamp from isu_condition group by jia_isu_uuid) as tmp1 on isc.jia_isu_uuid = tmp1.jia_isu_uuid and isc.`timestamp` = tmp1.`timestamp`) as isc inner join (select id, jia_isu_uuid, name, `character` from isu where  jia_user_id = ?) as isu on isc.jia_isu_uuid = isu.jia_isu_uuid order by id desc;", jiaUserID)
 	if err != nil {
 		c.Logger().Errorf("??????: %v", err)
 		return c.NoContent(http.StatusInternalServerError)
