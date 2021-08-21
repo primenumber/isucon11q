@@ -22,7 +22,17 @@ deploy-conf:
 	scp etc/2-isucondition.conf isucon@isucondition-2.t.isucon.dev:/tmp
 	ssh isucon@isucondition-2.t.isucon.dev 'sudo cp /tmp/isucondition.go.service /etc/systemd/system/isucondition.go.service; sudo systemctl daemon-reload; sudo systemctl restart isucondition.go.service; sudo cp /tmp/2-isucondition.conf /etc/nginx/sites-available/isucondition.conf; sudo systemctl restart nginx'
 
-deploy: deploy-app deploy-conf
+deploy: deploy-app deploy-conf stop-mock
+
+stop-mock:
+	ssh isucon@isucondition-1.t.isucon.dev 'sudo systemctl disable --now jiaapi-mock.service'
+	ssh isucon@isucondition-2.t.isucon.dev 'sudo systemctl disable --now jiaapi-mock.service'
+	ssh isucon@isucondition-3.t.isucon.dev 'sudo systemctl disable --now jiaapi-mock.service'
+
+restart-mock:
+	ssh isucon@isucondition-1.t.isucon.dev 'sudo systemctl restart jiaapi-mock.service'
+	ssh isucon@isucondition-2.t.isucon.dev 'sudo systemctl restart jiaapi-mock.service'
+	ssh isucon@isucondition-3.t.isucon.dev 'sudo systemctl restart jiaapi-mock.service'
 
 deploy-nginx-only:
 	scp -r etc/nginx isucon@isucondition-1.t.isucon.dev:/tmp
