@@ -20,4 +20,4 @@ get-nginx-log:
 	scp isucon@isucondition-1.t.isucon.dev:/var/log/nginx/nazo-access.log /tmp
 
 alp:
-	cat /tmp/nazo-access.log| alp ltsv -m '/api/condition/[-0-9]+,/api/isu/[-a-z0-9]+,/api/condition/[-a-z0-9]+,/isu/[-a-z0-9]+'
+	cat /tmp/nazo-access.log| alp ltsv -m '/api/isu/[-a-z0-9]+,/api/condition/[-a-z0-9]+,/isu/[-a-z0-9]+'
