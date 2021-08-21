@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
@@ -210,6 +211,7 @@ func main() {
 	e := echo.New()
 	e.Debug = true
 	e.Logger.SetLevel(log.DEBUG)
+	e.Logger.SetOutput(io.Discard)
 
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
