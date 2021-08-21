@@ -15,3 +15,9 @@ deploy:
 deploy-3-db:
 	scp etc/isucondition-3.50-server.cnf isucon@isucondition-3.t.isucon.dev:/tmp/50-server.cnf
 	ssh isucon@isucondition-3.t.isucon.dev 'sudo mv /tmp/50-server.cnf /etc/mysql/mariadb.conf.d/50-server.cnf; sudo systemctl restart mariadb.service'
+
+get-nginx-log:
+	scp isucon@isucondition-1.t.isucon.dev:/var/log/nginx/nazo-access.log /tmp
+
+alp:
+	cat /tmp/nazo-access.log| alp ltsv -m '/api/isu/[-a-z0-9]+,/api/condition/[-a-z0-9]+,/isu/[-a-z0-9]+'
