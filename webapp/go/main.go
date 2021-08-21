@@ -478,15 +478,8 @@ func getIsuList(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	tx, err := db.Beginx()
-	if err != nil {
-		c.Logger().Errorf("db error: %v", err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
-	defer tx.Rollback()
-
 	isuList := []Isu{}
-	err = tx.Select(
+	err = db.Select(
 		&isuList,
 		"SELECT * FROM `isu` WHERE `jia_user_id` = ? ORDER BY `id` DESC",
 		jiaUserID)
@@ -497,7 +490,7 @@ func getIsuList(c echo.Context) error {
 
 	responseList := []GetIsuListResponse{}
 	var lastConditions []IsuConditionJoinned
-	err = tx.Select(&lastConditions, "select isu.id, isu.jia_isu_uuid, `timestamp`, `is_sitting`, `condition`, `message`, isc.`created_at`, name, `character` from (select isc.id, isc.jia_isu_uuid, isc.`timestamp`, `is_sitting`, `condition`, message, `created_at` from isu_condition as isc inner join (select jia_isu_uuid, max(`timestamp`) as timestamp from isu_condition group by jia_isu_uuid) as tmp1 on isc.jia_isu_uuid = tmp1.jia_isu_uuid and isc.`timestamp` = tmp1.`timestamp`) as isc inner join (select id, jia_isu_uuid, name, `character` from isu where  jia_user_id = ?) as isu on isc.jia_isu_uuid = isu.jia_isu_uuid order by id desc;", jiaUserID)
+	err = db.Select(&lastConditions, "select isu.id, isu.jia_isu_uuid, `timestamp`, `is_sitting`, `condition`, `message`, isc.`created_at`, name, `character` from (select isc.id, isc.jia_isu_uuid, isc.`timestamp`, `is_sitting`, `condition`, message, `created_at` from isu_condition as isc inner join (select jia_isu_uuid, max(`timestamp`) as timestamp from isu_condition group by jia_isu_uuid) as tmp1 on isc.jia_isu_uuid = tmp1.jia_isu_uuid and isc.`timestamp` = tmp1.`timestamp`) as isc inner join (select id, jia_isu_uuid, name, `character` from isu where  jia_user_id = ?) as isu on isc.jia_isu_uuid = isu.jia_isu_uuid order by id desc;", jiaUserID)
 	if err != nil {
 		c.Logger().Errorf("??????: %v", err)
 		return c.NoContent(http.StatusInternalServerError)
@@ -534,12 +527,6 @@ func getIsuList(c echo.Context) error {
 			Character:          isu.Character,
 			LatestIsuCondition: formattedCondition}
 		responseList = append(responseList, res)
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		c.Logger().Errorf("db error: %v", err)
-		return c.NoContent(http.StatusInternalServerError)
 	}
 
 	return c.JSON(http.StatusOK, responseList)
